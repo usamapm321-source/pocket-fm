@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dramafy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dramafy}
+      POSTGRES_DB: ${POSTGRES_DB:-dramafy}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dramafy} -d ${POSTGRES_DB:-dramafy}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dramafy}:${POSTGRES_PASSWORD:-dramafy}@db:5432/${POSTGRES_DB:-dramafy}
+      SCRAPE_ON_STARTUP: ${SCRAPE_ON_STARTUP:-true}
+      SCRAPE_INTERVAL_HOURS: ${SCRAPE_INTERVAL_HOURS:-24}
+      SCRAPE_CONCURRENCY: ${SCRAPE_CONCURRENCY:-8}
+      ARCHIVE_COLLECTIONS: ${ARCHIVE_COLLECTIONS:-oldtimeradio:Old Time Radio,librivoxaudio:Audiobooks}
+      ARCHIVE_MAX_ITEMS_PER_COLLECTION: ${ARCHIVE_MAX_ITEMS_PER_COLLECTION:-2000}
+      LEARNOUTLOUD_SECTIONS: ${LEARNOUTLOUD_SECTIONS:-Free-Audiobooks:Audiobooks,Podcast-Directory:Podcasts,Free-Courses:Courses}
+      LEARNOUTLOUD_MAX_ITEMS_PER_SECTION: ${LEARNOUTLOUD_MAX_ITEMS_PER_SECTION:-0}
+      TRANSCRIBE_WORKERS: ${TRANSCRIBE_WORKERS:-1}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER_CPU_THREADS: ${WHISPER_CPU_THREADS:-0}
+      TRANSCRIBE_MAX_AUDIO_MB: ${TRANSCRIBE_MAX_AUDIO_MB:-500}
+      TRANSCRIBE_AUTO_PLATFORMS: ${TRANSCRIBE_AUTO_PLATFORMS:-}
+      HF_HOME: /models
+    volumes:
+      - whisper-models:/models
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  whisper-models:

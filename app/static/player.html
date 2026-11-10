@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio Shows Player</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel-2: #222631; --text: #eef0f4; --muted: #9aa1ad;
+    --accent: #e8504a; --accent-2: #ff6b5f; --border: #2a2f3a; --bar-h: 92px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: calc(var(--bar-h) + 16px); }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  a { color: inherit; }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(15,17,21,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+  .top { display: flex; gap: 12px; align-items: center; padding: 12px 0; flex-wrap: wrap; }
+  .logo { font-weight: 700; font-size: 20px; text-decoration: none; margin-right: auto; }
+  .logo span { color: var(--accent); }
+  input, select { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font: inherit; }
+  input { width: 260px; max-width: 100%; }
+  .count { color: var(--muted); margin: 16px 0 8px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px; }
+  .card { background: none; border: 0; padding: 0; text-align: left; }
+  .card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--panel-2); display: block; transition: transform .15s; }
+  .card:hover img { transform: scale(1.03); }
+  .card .t { font-weight: 600; margin-top: 8px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .s { color: var(--muted); font-size: 13px; }
+  .more { display: block; margin: 24px auto; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 10px 24px; }
+
+  .back { background: none; border: 0; color: var(--muted); padding: 16px 0; }
+  .hero { display: flex; gap: 24px; flex-wrap: wrap; }
+  .hero img { width: 240px; max-width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
+  .hero .info { flex: 1; min-width: 260px; }
+  .hero h1 { margin: 0 0 4px; font-size: 28px; line-height: 1.2; }
+  .meta { color: var(--muted); }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+  .tag.pf { color: var(--text); background: #3a2226; }
+  .tag { background: var(--panel-2); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); }
+  .desc { white-space: pre-line; color: #cfd3da; max-height: 9em; overflow: auto; }
+  .note { background: #3a2a14; color: #f4c27a; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+  .play-all { background: var(--accent); border: 0; border-radius: 999px; padding: 10px 22px; font-weight: 600; margin-top: 12px; }
+  .play-all:hover { background: var(--accent-2); }
+  h2 { font-size: 18px; margin: 28px 0 8px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 28px 0 14px; }
+  .tab-btn { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); padding: 10px 18px; font-weight: 600; margin-bottom: -1px; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.on { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-btn small { font-weight: 400; color: var(--muted); }
+  .panel h2:first-child { margin-top: 0; }
+  .links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .link-btn { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 13px; color: var(--text); text-decoration: none; }
+  .link-btn:hover { border-color: var(--accent); }
+  .story-text { white-space: pre-wrap; font-family: Georgia, "Times New Roman", serif; font-size: 17px; line-height: 1.7; max-width: 70ch; color: #dfe2e8; background: var(--panel); border-radius: 12px; padding: 24px 28px; margin: 0; overflow-wrap: anywhere; }
+  @media (max-width: 640px) { .story-text { padding: 16px; font-size: 16px; } }
+  .read-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .read-bar select { max-width: 100%; min-width: 0; flex: 1 1 260px; }
+  .read-bar label { color: var(--muted); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+  .read-bar input[type=checkbox] { width: auto; margin: 0; accent-color: var(--accent); }
+  .read-text { white-space: normal; }
+  .read-text p { margin: 0 0 1em; }
+  .read-text p:last-child { margin-bottom: 0; }
+  .read-text .spk { font-family: system-ui, sans-serif; font-size: 13px; font-weight: 700; color: var(--accent-2); text-transform: uppercase; letter-spacing: .04em; margin-right: 6px; }
+  .seg { cursor: pointer; border-radius: 3px; transition: background .2s; }
+  .seg:hover { background: var(--panel-2); }
+  .seg.on { background: #4a2a2c; color: #fff; }
+  .read-status { color: var(--muted); margin-bottom: 14px; }
+  .progress { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin: 8px 0 14px; max-width: 70ch; }
+  .progress i { display: block; height: 100%; background: var(--accent); transition: width .5s; }
+  .ep .has-text { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; margin-left: 8px; vertical-align: 1px; }
+  .ep { display: flex; align-items: center; gap: 12px; width: 100%; background: var(--panel); border: 1px solid transparent; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; text-align: left; }
+  .ep:hover { border-color: var(--border); background: var(--panel-2); }
+  .ep.active { border-color: var(--accent); }
+  .ep .n { color: var(--muted); width: 28px; flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+  .ep .name { flex: 1; }
+  .ep .d { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .ep .bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .ep .bar i { display: block; height: 100%; background: var(--accent); }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+
+  .player { position: fixed; left: 0; right: 0; bottom: 0; height: var(--bar-h); background: var(--panel); border-top: 1px solid var(--border); z-index: 10; }
+  .player .wrap { height: 100%; display: flex; align-items: center; gap: 16px; }
+  .now { display: flex; align-items: center; gap: 12px; width: 280px; min-width: 0; }
+  .now img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: var(--panel-2); flex: none; }
+  .now .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now .s { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now a { text-decoration: none; }
+  .center { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .ctrls { display: flex; align-items: center; gap: 10px; }
+  .icon { background: none; border: 0; padding: 6px; border-radius: 50%; display: grid; place-items: center; color: var(--text); }
+  .icon:hover { background: var(--panel-2); }
+  .icon:disabled { opacity: .35; cursor: default; background: none; }
+  .icon svg { width: 22px; height: 22px; fill: currentColor; }
+  .pp { background: var(--text); color: var(--bg); width: 42px; height: 42px; }
+  .pp:hover { background: #fff; }
+  .seek { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 560px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type=range] { flex: 1; padding: 0; accent-color: var(--accent); border: 0; background: none; width: auto; }
+  .right { display: flex; align-items: center; gap: 8px; width: 200px; justify-content: flex-end; }
+  .right select { padding: 4px 6px; font-size: 13px; }
+  .right input[type=range] { max-width: 90px; }
+  .skip { font-size: 11px; font-weight: 700; }
+
+  @media (max-width: 760px) {
+    :root { --bar-h: 128px; }
+    .player .wrap { flex-wrap: wrap; gap: 6px; padding-top: 8px; padding-bottom: 8px; }
+    .now { width: auto; flex: 1; }
+    .now img { width: 44px; height: 44px; }
+    .right { width: auto; }
+    .right input[type=range] { display: none; }
+    .center { order: 3; flex-basis: 100%; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px; }
+    .hero img { width: 160px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <a class="logo" href="#/">Audio<span>Shows</span></a>
+    <select id="platform"><option value="">All platforms</option></select>
+    <select id="category"><option value="">All categories</option></select>
+    <input id="q" type="search" placeholder="Search shows or creators…" autocomplete="off">
+    <select id="genre"><option value="">All genres</option></select>
+  </div>
+</header>
+
+<main class="wrap" id="view"></main>
+
+<div class="player">
+  <div class="wrap">
+    <div class="now">
+      <img id="np-img" alt="">
+      <div style="min-width:0">
+        <div class="t" id="np-title">Nothing playing</div>
+        <a class="s" id="np-show" href="#/">Pick a show to start listening</a>
+      </div>
+    </div>
+    <div class="center">
+      <div class="ctrls">
+        <button class="icon" id="prev" title="Previous episode" disabled><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+        <button class="icon skip" id="back15" title="Back 15s" disabled>-15</button>
+        <button class="icon pp" id="pp" title="Play/Pause" disabled><svg viewBox="0 0 24 24" id="pp-icon"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="icon skip" id="fwd30" title="Forward 30s" disabled>+30</button>
+        <button class="icon" id="next" title="Next episode" disabled><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+      </div>
+      <div class="seek">
+        <span id="cur">0:00</span>
+        <input type="range" id="seek" min="0" max="0" step="1" value="0" disabled>
+        <span id="dur">0:00</span>
+      </div>
+    </div>
+    <div class="right">
+      <select id="rate" title="Playback speed">
+        <option value="0.75">0.75×</option><option value="1" selected>1×</option>
+        <option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+      </select>
+      <input type="range" id="vol" min="0" max="1" step="0.05" value="1" title="Volume">
+    </div>
+  </div>
+  <audio id="audio" preload="metadata"></audio>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const audio = $("#audio");
+const view = $("#view");
+const PAGE_SIZE = 60;
+const PLAY = '<path d="M8 5v14l11-7z"/>';
+const PAUSE = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
+const PLACEHOLDER = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="#222631"/></svg>');
+
+// read: the episode shown in the Read tab, its transcript and the segment being played
+const state = { queue: [], index: -1, show: null, showQueue: [], list: { page: 1, total: 0, items: [] },
+  read: { epId: null, data: null, timer: null, active: -1 } };
+
+// ---------- helpers ----------
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function fmt(sec) {
+  sec = Math.max(0, Math.floor(sec || 0));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0");
+}
+async function api(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(r.status + " " + r.statusText);
+  return r.json();
+}
+// Per-browser resume positions; harmless if storage is unavailable
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+// Keyed by internal episode id (v2: ids changed when platforms were merged)
+const positions = store.get("positions:v2", {});
+function savePosition(id, t, dur) {
+  if (!id) return;
+  if (dur && t > dur - 10) delete positions[id]; else positions[id] = { t: Math.floor(t), d: Math.floor(dur || 0) };
+  store.set("positions:v2", positions);
+}
+
+// ---------- show list ----------
+async function renderList(reset = true) {
+  const q = $("#q").value.trim(), genre = $("#genre").value, platform = $("#platform").value,
+    category = $("#category").value;
+  if (reset) {
+    state.list = { page: 1, total: 0, items: [] };
+    view.innerHTML = '<p class="count">Loading…</p>';
+  }
+  const params = new URLSearchParams({ page: state.list.page, page_size: PAGE_SIZE });
+  if (q) params.set("q", q);
+  if (genre) params.set("genre", genre);
+  if (platform) params.set("platform", platform);
+  if (category) params.set("category", category);
+  let data;
+  try { data = await api("/shows?" + params); }
+  catch (e) { view.innerHTML = `<p class="empty">Couldn't load shows (${esc(e.message)}).</p>`; return; }
+  state.list.total = data.total;
+  state.list.items.push(...data.items);
+
+  if (!state.list.items.length) {
+    view.innerHTML = '<p class="empty">No shows match. The first scrape may still be running; try again in a minute.</p>';
+    return;
+  }
+  view.innerHTML = `
+    <p class="count">${state.list.total} shows</p>
+    <div class="grid">${state.list.items.map((s) => `
+      <button class="card" data-path="${esc(s.platform)}/${esc(s.slug)}">
+        <img loading="lazy" src="${esc(s.thumbnail_url || PLACEHOLDER)}" alt="">
+        <div class="t">${esc(s.title)}</div>
+        <div class="s">${esc(s.category || s.platform)} · ${s.creator_name ? esc(s.creator_name) + " · " : ""}${s.episode_count} ep${s.story ? " · text" : ""}</div>
+      </button>`).join("")}
+    </div>
+    ${state.list.items.length < state.list.total ? '<button class="more" id="more">Load more</button>' : ""}`;
+  view.querySelectorAll(".card").forEach((c) => c.onclick = () => location.hash = "#/show/" + c.dataset.path);
+  const more = $("#more");
+  if (more) more.onclick = () => { state.list.page++; renderList(false); };
+}
+
+// ---------- show detail ----------
+async function renderShow(path, tab = "audio", readEp = null) {
+  view.innerHTML = '<p class="count">Loading…</p>';
+  let show;
+  try { show = await api("/shows/" + path.split("/").map(encodeURIComponent).join("/")); }
+  catch (e) { view.innerHTML = `<p class="empty">Show not found. <a href="#/">Back to shows</a></p>`; return; }
+  state.show = show;
+  window.scrollTo(0, 0);
+
+  const seasons = show.seasons.filter((s) => s.episodes.length);
+  const multi = seasons.length > 1;
+  view.innerHTML = `
+    <button class="back" onclick="history.length > 1 ? history.back() : (location.hash = '#/')">← All shows</button>
+    <div class="hero">
+      <img src="${esc(show.thumbnail_url || PLACEHOLDER)}" alt="">
+      <div class="info">
+        <h1>${esc(show.title)}</h1>
+        <div class="meta">${[show.creator_name, show.extra.rating, show.language, show.status, show.episode_count + " episodes"].filter(Boolean).map(esc).join(" · ")}</div>
+        <div class="tags"><a class="tag pf" href="${esc(show.page_url)}" target="_blank" rel="noopener">${esc(show.platform)} ↗</a>${show.genres.map((g) => `<span class="tag">${esc(g)}</span>`).join("")}</div>
+        <div class="desc">${esc(show.description || "")}</div>
+        ${show.has_locked_episodes ? `<div class="note">Newest episodes are paywalled on ${esc(show.platform)} and will appear here once free.</div>` : ""}
+        <button class="play-all" id="play-all">▶ Play from the start</button>
+      </div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab-btn" role="tab" data-tab="audio">Audio <small>${show.episode_count}</small></button>
+      <button class="tab-btn" role="tab" data-tab="read">Read</button>
+      <button class="tab-btn" role="tab" data-tab="story">Story${show.story ? "" : " <small>none</small>"}</button>
+    </div>
+    <div class="panel" id="panel-story" hidden>${storyPanel(show)}</div>
+    <div class="panel" id="panel-read" hidden>
+      <div class="read-bar">
+        <select id="read-ep" aria-label="Episode">${seasons.map((s) => s.episodes.map((e) =>
+          `<option value="${e.id}">${multi ? esc(s.title || "Season " + s.season_number) + " · " : ""}${e.episode_number ?? ""}. ${esc(e.title)}</option>`
+        ).join("")).join("")}</select>
+        <label><input type="checkbox" id="read-follow" checked> Follow audio</label>
+      </div>
+      <div id="read-body"></div>
+    </div>
+    <div class="panel" id="panel-audio">
+    ${seasons.map((s) => `
+      ${multi ? `<h2>${esc(s.title || "Season " + s.season_number)}</h2>` : ""}
+      ${s.episodes.map((e) => {
+        const p = positions[e.id];
+        const pct = p && e.duration_seconds ? Math.min(100, (p.t / e.duration_seconds) * 100) : 0;
+        return `<button class="ep" data-id="${e.id}">
+          <span class="n">${e.episode_number ?? ""}</span>
+          <span class="name">${esc(e.title)}${pct ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}</span>
+          <span class="d">${fmt(e.duration_seconds)}</span>
+        </button>`;
+      }).join("")}`).join("")}
+    </div>`;
+  // Queue is every free episode of this show in season → episode order
+  const queue = seasons.flatMap((s) => s.episodes.map((e) => ({ ...e, show })));
+  state.showQueue = queue;
+  state.read.epId = null;
+  view.querySelectorAll(".tab-btn").forEach((b) => b.onclick = () => showTab(b.dataset.tab));
+  $("#read-ep").onchange = (e) => openRead(Number(e.target.value));
+  showTab(["story", "read"].includes(tab) ? tab : "audio", readEp);
+
+  view.querySelectorAll(".ep").forEach((b) => b.onclick = () => {
+    playQueue(queue, queue.findIndex((e) => e.id === Number(b.dataset.id)));
+  });
+  $("#play-all").onclick = () => playQueue(queue, 0);
+  markActive();
+  markTranscribed(show);
+}
+
+// "text" badge on episodes whose transcript is finished
+function markTranscribed(show) {
+  api(`/shows/${show.id}/transcripts`).then((ts) => {
+    if (state.show !== show) return;
+    const done = new Set(ts.filter((t) => t.status === "done").map((t) => t.episode_id));
+    view.querySelectorAll(".ep").forEach((b) => {
+      if (done.has(Number(b.dataset.id)) && !b.querySelector(".has-text"))
+        b.querySelector(".d").insertAdjacentHTML("beforebegin", '<span class="has-text" title="Text available in the Read tab">text</span>');
+    });
+  }).catch(() => {});
+}
+
+// ---------- story (text version) ----------
+function storyPanel(show) {
+  const st = show.story;
+  if (!st) return '<p class="empty">No text version found for this show.</p>';
+  const links = [["Read online", st.read_url], ["Plain text", st.txt_url], ["EPUB", st.epub_url],
+                 ["PDF", st.pdf_url], [st.source + " page", st.page_url]].filter(([, u]) => u);
+  return `
+    <div class="links">${links.map(([label, u]) =>
+      `<a class="link-btn" href="${esc(u)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`).join("")}</div>
+    ${st.match === "title_search" ? `<div class="note">Matched to this audiobook by title and author on ${esc(st.source)}; it may be a different edition from the one read aloud.</div>` : ""}
+    <h2>Text</h2>
+    <pre class="story-text" id="story-text">Loading…</pre>`;
+}
+
+function showTab(tab, readEp) {
+  view.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  ["audio", "read", "story"].forEach((t) => $("#panel-" + t).hidden = t !== tab);
+  state.tab = tab;
+  if (tab === "read") openRead(readEp || state.read.epId || defaultReadEp()); else setUrl();
+  const box = $("#story-text"), show = state.show;
+  if (tab === "story" && box && !box.dataset.loaded) {
+    box.dataset.loaded = "1";
+    fetch(`/shows/${show.id}/story`)
+      .then((r) => r.ok ? r.text() : r.json().then((e) => Promise.reject(new Error(e.detail || r.status))))
+      .then((text) => { if (state.show === show) box.textContent = text; })
+      .catch((e) => { box.textContent = `Couldn't load the text (${e.message}). Use the links above.`; delete box.dataset.loaded; });
+  }
+}
+
+// Keep the tab (and the episode being read) in the URL without a hashchange, which would re-render the show
+function setUrl() {
+  const q = state.tab === "story" ? "?tab=story" : state.tab === "read" && state.read.epId ? "?tab=read&ep=" + state.read.epId : "";
+  history.replaceState(null, "", `#/show/${state.show.platform}/${state.show.slug}${q}`);
+}
+
+// ---------- read (episode transcripts) ----------
+function defaultReadEp() {
+  const cur = state.queue[state.index];
+  return cur && state.showQueue.some((e) => e.id === cur.id) ? cur.id : state.showQueue[0]?.id;
+}
+
+function openRead(epId) {
+  if (!epId || !state.showQueue.some((e) => e.id === epId)) epId = defaultReadEp();
+  if (!epId) { $("#read-body").innerHTML = '<p class="empty">This show has no episodes.</p>'; return; }
+  if (state.read.epId !== epId) {
+    Object.assign(state.read, { epId, data: null, active: -1 });
+    $("#read-body").innerHTML = '<p class="read-status">Loading…</p>';
+  }
+  $("#read-ep").value = epId;
+  setUrl();
+  loadTranscript(epId);
+}
+
+// Shows the transcript; polls while it is being made (transcripts are requested through the API)
+async function loadTranscript(epId) {
+  clearTimeout(state.read.timer);
+  let t;
+  try {
+    const r = await fetch(`/episodes/${epId}/transcript`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status);
+    t = await r.json();
+  } catch (e) {
+    if (state.read.epId === epId) $("#read-body").innerHTML = `<p class="empty">Couldn't load the text (${esc(e.message)}).</p>`;
+    return;
+  }
+  if (state.read.epId !== epId || !$("#read-body")) return;
+  state.read.data = t;
+  renderTranscript(t);
+  if (t.status === "queued" || t.status === "running") {
+    state.read.timer = setTimeout(() => {
+      if (state.read.epId === epId && $("#panel-read") && !$("#panel-read").hidden) loadTranscript(epId);
+    }, 4000);
+  }
+}
+
+function renderTranscript(t) {
+  const body = $("#read-body");
+  let status = "";
+  if (t.status === "none") {
+    status = "This episode has no text yet.";
+  } else if (t.status === "failed") {
+    status = "The text for this episode isn't available.";
+  } else if (t.status === "queued") {
+    status = t.queue_position ? `Waiting for ${t.queue_position} other episode${t.queue_position > 1 ? "s" : ""} to be transcribed first…` : "Starting…";
+  } else if (t.status === "running") {
+    const pct = Math.round(t.progress * 100);
+    status = `Transcribing the audio… ${pct}%. You can start reading below.<div class="progress"><i style="width:${pct}%"></i></div>`;
+  }
+  const note = t.status !== "done" ? "" : t.source === "feed"
+    ? '<p class="read-status">Transcript published by the creator.</p>'
+    : `<p class="read-status">Generated automatically from the audio, so it may contain mistakes. ` +
+      `<a href="/episodes/${t.episode_id}/transcript?format=txt" target="_blank" rel="noopener">Plain text</a></p>`;
+  body.innerHTML = (status ? `<div class="read-status">${status}</div>` : "") + note + transcriptHtml(t);
+  if (t.status === "done" && !t.segments.length && !t.text) body.insertAdjacentHTML("beforeend", '<p class="empty">No speech was found in this episode.</p>');
+  body.querySelector(".read-text")?.addEventListener("click", (e) => {
+    const seg = e.target.closest(".seg");
+    if (seg) playAt(t.episode_id, state.read.data.segments[seg.dataset.i].start);
+  });
+  state.read.active = -1;
+  highlightReading();
+}
+
+// Segments grouped into paragraphs at pauses, speaker changes, or every ~70 words at a sentence end
+function transcriptHtml(t) {
+  if (!t.segments.length) return t.text ? `<pre class="story-text">${esc(t.text)}</pre>` : "";
+  const paras = [];
+  let cur = null, prev = null, words = 0;
+  t.segments.forEach((s, i) => {
+    if (!cur || s.speaker !== prev.speaker || s.start - prev.end > 2 || (words > 70 && /[.!?…]["”’)]?$/.test(prev.text))) {
+      paras.push(cur = s.speaker ? [`<span class="spk">${esc(s.speaker)}</span>`] : []);
+      words = 0;
+    }
+    cur.push(`<span class="seg" data-i="${i}" title="Play from ${fmt(s.start)}">${esc(s.text)}</span>`);
+    words += s.text.split(/\s+/).length;
+    prev = s;
+  });
+  return `<div class="story-text read-text">${paras.map((p) => `<p>${p.join(" ")}</p>`).join("")}</div>`;
+}
+
+// Click on a line: jump there, starting the episode if another one is playing
+function playAt(epId, sec) {
+  const cur = state.queue[state.index];
+  if (cur && cur.id === epId) {
+    audio.currentTime = sec;
+    if (audio.paused) audio.play().catch(() => {});
+  } else {
+    state.queue = state.showQueue;
+    loadEpisode(state.showQueue.findIndex((e) => e.id === epId), true, sec);
+  }
+}
+
+// Highlight the line being played, scrolling to it when "Follow audio" is on
+function highlightReading() {
+  const r = state.read, cur = state.queue[state.index], box = $("#read-body .read-text");
+  if (!box || !r.data || !cur || cur.id !== r.epId) return;
+  const segs = r.data.segments, t = audio.currentTime;
+  let lo = 0, hi = segs.length - 1, i = -1;  // last segment starting at or before t
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (segs[mid].start <= t) { i = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  if (i === r.active) return;
+  r.active = i;
+  box.querySelector(".seg.on")?.classList.remove("on");
+  const el = i >= 0 && box.querySelector(`.seg[data-i="${i}"]`);
+  if (!el) return;
+  el.classList.add("on");
+  if ($("#read-follow").checked && !$("#panel-read").hidden) {
+    const rect = el.getBoundingClientRect();
+    if (rect.top < $("header").offsetHeight || rect.bottom > innerHeight - $(".player").offsetHeight)
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+
+function markActive() {
+  const cur = state.queue[state.index];
+  view.querySelectorAll(".ep").forEach((b) => b.classList.toggle("active", !!cur && Number(b.dataset.id) === cur.id));
+}
+
+// ---------- playback ----------
+function playQueue(queue, index) {
+  state.queue = queue;
+  loadEpisode(index, true);
+}
+
+function loadEpisode(index, autoplay, startAt) {
+  const ep = state.queue[index];
+  if (!ep) return;
+  const prevEp = state.queue[state.index];
+  if (state.index >= 0 && prevEp) savePosition(prevEp.id, audio.currentTime, audio.duration);
+  state.index = index;
+  audio.src = ep.audio_url;
+  audio.playbackRate = Number($("#rate").value);
+  const resume = startAt ?? (positions[ep.id]?.t || 0);
+  // Reading along: move the Read tab on to the next episode with the audio
+  if (prevEp && state.read.epId === prevEp.id && $("#panel-read") && $("#read-follow").checked
+      && state.showQueue.some((e) => e.id === ep.id)) {
+    if ($("#panel-read").hidden) state.read.epId = ep.id; else openRead(ep.id);
+  }
+  audio.addEventListener("loadedmetadata", () => { if (resume) audio.currentTime = resume; }, { once: true });
+  if (autoplay) audio.play().catch(() => {});
+
+  $("#np-img").src = ep.show.thumbnail_url || PLACEHOLDER;
+  $("#np-title").textContent = ep.title;
+  $("#np-show").textContent = ep.show.title;
+  $("#np-show").href = "#/show/" + ep.show.platform + "/" + ep.show.slug;
+  document.title = ep.title + " · " + ep.show.title;
+  ["#pp", "#seek", "#back15", "#fwd30"].forEach((s) => $(s).disabled = false);
+  $("#prev").disabled = index <= 0;
+  $("#next").disabled = index >= state.queue.length - 1;
+  markActive();
+
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: ep.title, artist: ep.show.creator_name || ep.show.platform, album: ep.show.title,
+      artwork: ep.show.thumbnail_url ? [{ src: ep.show.thumbnail_url, sizes: "512x512" }] : [],
+    });
+  }
+}
+
+const skip = (sec) => { if (audio.src) audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + sec)); };
+const prev = () => {
+  if (audio.currentTime > 5) audio.currentTime = 0; else loadEpisode(state.index - 1, true);
+};
+const next = () => loadEpisode(state.index + 1, true);
+
+$("#pp").onclick = () => audio.paused ? audio.play() : audio.pause();
+$("#prev").onclick = prev;
+$("#next").onclick = next;
+$("#back15").onclick = () => skip(-15);
+$("#fwd30").onclick = () => skip(30);
+$("#rate").onchange = (e) => audio.playbackRate = Number(e.target.value);
+$("#vol").oninput = (e) => { audio.volume = Number(e.target.value); store.set("volume", audio.volume); };
+audio.volume = $("#vol").value = store.get("volume", 1);
+
+let seeking = false;
+$("#seek").oninput = (e) => { seeking = true; $("#cur").textContent = fmt(e.target.value); };
+$("#seek").onchange = (e) => { audio.currentTime = Number(e.target.value); seeking = false; };
+
+audio.addEventListener("play", () => $("#pp-icon").innerHTML = PAUSE);
+audio.addEventListener("pause", () => {
+  $("#pp-icon").innerHTML = PLAY;
+  const ep = state.queue[state.index];
+  if (ep) savePosition(ep.id, audio.currentTime, audio.duration);
+});
+audio.addEventListener("loadedmetadata", () => { $("#seek").max = Math.floor(audio.duration); $("#dur").textContent = fmt(audio.duration); });
+let lastSave = 0;
+audio.addEventListener("timeupdate", () => {
+  if (!seeking) { $("#seek").value = Math.floor(audio.currentTime); $("#cur").textContent = fmt(audio.currentTime); }
+  const ep = state.queue[state.index];
+  if (ep && Date.now() - lastSave > 5000) { lastSave = Date.now(); savePosition(ep.id, audio.currentTime, audio.duration); }
+  highlightReading();
+});
+audio.addEventListener("ended", () => {
+  const ep = state.queue[state.index];
+  if (ep) savePosition(ep.id, audio.duration, audio.duration);
+  if (state.index < state.queue.length - 1) next(); else $("#pp-icon").innerHTML = PLAY;
+});
+audio.addEventListener("error", () => {
+  if (audio.src) $("#np-show").textContent = "Couldn't load this episode's audio";
+});
+
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.setActionHandler("previoustrack", prev);
+  navigator.mediaSession.setActionHandler("nexttrack", next);
+  navigator.mediaSession.setActionHandler("seekbackward", () => skip(-15));
+  navigator.mediaSession.setActionHandler("seekforward", () => skip(30));
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, select, textarea") || !audio.src) return;
+  if (e.code === "Space") { e.preventDefault(); $("#pp").click(); }
+  else if (e.key === "ArrowLeft") skip(-15);
+  else if (e.key === "ArrowRight") skip(30);
+});
+
+// ---------- routing & filters ----------
+function route() {
+  const m = location.hash.match(/^#\/show\/([^?]+)(?:\?(.*))?$/);
+  const q = new URLSearchParams(m?.[2] || "");
+  if (m) renderShow(decodeURIComponent(m[1]), q.get("tab"), Number(q.get("ep")) || null);
+  else renderList();
+}
+let debounce;
+$("#q").oninput = () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => location.hash.startsWith("#/show/") ? (location.hash = "#/") : renderList(), 300);
+};
+$("#genre").onchange = () => location.hash.startsWith("#/show/") ? (location.hash = "#/") : renderList();
+$("#platform").onchange = () => { loadCategories(); loadGenres(); location.hash.startsWith("#/show/") ? (location.hash = "#/") : renderList(); };
+$("#category").onchange = () => { loadGenres(); location.hash.startsWith("#/show/") ? (location.hash = "#/") : renderList(); };
+
+function filterQuery(keys) {
+  const params = new URLSearchParams();
+  for (const k of keys) if ($("#" + k).value) params.set(k, $("#" + k).value);
+  return params.size ? "?" + params : "";
+}
+function loadCategories() {
+  const current = $("#category").value;
+  api("/categories" + filterQuery(["platform"])).then((cs) => {
+    $("#category").innerHTML = '<option value="">All categories</option>' +
+      cs.filter((c) => c.name).map((c) => `<option value="${esc(c.name)}">${esc(c.name)} (${c.shows})</option>`).join("");
+    if (cs.some((c) => c.name === current)) $("#category").value = current;
+  }).catch(() => {});
+}
+loadCategories();
+
+function loadGenres() {
+  const current = $("#genre").value;
+  api("/genres" + filterQuery(["platform", "category"])).then((gs) => {
+    $("#genre").innerHTML = '<option value="">All genres</option>' +
+      gs.map((g) => `<option value="${esc(g.name)}">${esc(g.name)} (${g.shows})</option>`).join("");
+    if (gs.some((g) => g.name === current)) $("#genre").value = current;
+  }).catch(() => {});
+}
+loadGenres();
+api("/platforms").then((ps) => {
+  $("#platform").insertAdjacentHTML("beforeend", ps.map((p) => `<option value="${esc(p.platform)}">${esc(p.platform)} (${p.shows})</option>`).join(""));
+}).catch(() => {});
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
